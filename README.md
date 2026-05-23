@@ -4,8 +4,6 @@
 
 <video src="./promo.mp4" width="600"></video>
 
-<video src="https://youtu.be/tJ_x-Dy43u8" width="100%" controls muted autoplay loop></video>
-
 https://youtu.be/tJ_x-Dy43u8
 
 
