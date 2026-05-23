@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Антитетрис</title>
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-accent: #0f1f58;
+      --bg-radial-top: rgba(63, 122, 255, 0.2);
+      --bg-radial-left: rgba(0, 193, 255, 0.12);
+      --bg-radial-right: rgba(170, 77, 255, 0.12);
+      --bg-gradient: linear-gradient(180deg, #071024 0%, #050814 45%, #02040c 100%);
+      --panel: linear-gradient(180deg, rgba(18, 28, 73, 0.96), rgba(8, 14, 38, 0.94));
+      --panel-edge: rgba(70, 144, 255, 0.52);
+      --panel-inner: rgba(15, 43, 119, 0.55);
+      --panel-glow: rgba(47, 139, 255, 0.18);
+      --stat-panel: linear-gradient(180deg, rgba(17, 29, 72, 0.92), rgba(10, 18, 42, 0.9));
+      --stat-border: rgba(98, 160, 255, 0.24);
+      --grid: #111827;
+      --field-bg: rgba(4, 8, 24, 0.84);
+      --field-edge: rgba(91, 150, 255, 0.26);
+      --field-glow: rgba(35, 215, 255, 0.12);
+      --cell-bg: rgba(5, 11, 27, 0.5);
+      --cell-border: #2d2d5b;
+      --filled: #23d7ff;
+      --filled-2: #0d89ff;
+      --filled-shadow: rgba(35, 215, 255, 0.38);
+      --text: #eef4ff;
+      --muted: #9ab0dd;
+      --shadow: 0 28px 70px rgba(0, 0, 0, 0.48);
+      --primary-btn: linear-gradient(135deg, #1ecbff, #0d78ff);
+      --primary-shadow: rgba(13, 120, 255, 0.3);
+      --secondary-btn: rgba(35, 215, 255, 0.12);
+      --status-bg: rgba(35, 215, 255, 0.1);
+      --status-text: #b8f5ff;
+      --timer-bg: rgba(103, 143, 214, 0.18);
+      --timer-border: rgba(91, 150, 255, 0.22);
+      --timer-bar: linear-gradient(90deg, #2ae0ff 0%, #2a8dff 58%, #5e6dff 100%);
+      --timer-shadow: rgba(42, 160, 255, 0.35);
+      --choice-bg: linear-gradient(180deg, rgba(16, 28, 73, 0.95), rgba(8, 15, 37, 0.98));
+      --choice-border: rgba(91, 150, 255, 0.28);
+      --choice-hover: rgba(65, 176, 255, 0.35);
+      --overlay-bg: rgba(2, 5, 12, 0.62);
+      --modal-bg: linear-gradient(180deg, rgba(19, 31, 80, 0.98), rgba(7, 14, 34, 0.98));
+      --modal-border: rgba(79, 147, 255, 0.3);
+      --cell: 28px;
+      --grid-gap: 1px;
+      --board-width: 8;
+      --board-height: 20;
+      --field-w: calc((var(--cell) * var(--board-width)) + (var(--grid-gap) * (var(--board-width) - 1)));
+      --field-h: calc((var(--cell) * var(--board-height)) + (var(--grid-gap) * (var(--board-height) - 1)));
+      font-family: "Trebuchet MS", "Verdana", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100svh;
+      height: 100svh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, var(--bg-radial-top), transparent 28%),
+        radial-gradient(circle at 20% 80%, var(--bg-radial-left), transparent 22%),
+        radial-gradient(circle at 80% 15%, var(--bg-radial-right), transparent 20%),
+        var(--bg-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(10px, 1.8vh, 24px);
+      overflow: hidden;
+    }
+
+    body[data-mode="versus"] {
+      --bg: #090202;
+      --bg-accent: #3c0808;
+      --bg-radial-top: rgba(255, 78, 67, 0.2);
+      --bg-radial-left: rgba(135, 8, 22, 0.26);
+      --bg-radial-right: rgba(255, 146, 63, 0.1);
+      --bg-gradient: linear-gradient(180deg, #120505 0%, #090202 48%, #030101 100%);
+      --panel: linear-gradient(180deg, rgba(52, 13, 13, 0.96), rgba(17, 4, 5, 0.97));
+      --panel-edge: rgba(255, 85, 76, 0.72);
+      --panel-inner: rgba(255, 95, 86, 0.2);
+      --panel-glow: rgba(255, 63, 55, 0.34);
+      --stat-panel: linear-gradient(180deg, rgba(63, 14, 13, 0.92), rgba(21, 5, 6, 0.92));
+      --stat-border: rgba(255, 105, 93, 0.32);
+      --field-bg: rgba(24, 5, 5, 0.88);
+      --field-edge: rgba(255, 91, 82, 0.42);
+      --field-glow: rgba(255, 62, 54, 0.22);
+      --cell-bg: rgba(18, 4, 4, 0.64);
+      --cell-border: rgba(125, 42, 38, 0.66);
+      --text: #fff1ed;
+      --muted: #ff9c94;
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.58), 0 0 36px rgba(183, 20, 24, 0.28);
+      --primary-btn: linear-gradient(135deg, #ff6a5f, #b20d1e);
+      --primary-shadow: rgba(210, 26, 32, 0.38);
+      --secondary-btn: rgba(255, 92, 83, 0.14);
+      --status-bg: rgba(255, 76, 66, 0.12);
+      --status-text: #ffd0c9;
+      --timer-bg: rgba(91, 18, 17, 0.65);
+      --timer-border: rgba(255, 107, 95, 0.28);
+      --timer-bar: linear-gradient(90deg, #ffb15f 0%, #ff675d 45%, #b4091c 100%);
+      --timer-shadow: rgba(255, 86, 76, 0.42);
+      --choice-bg: linear-gradient(180deg, rgba(54, 11, 11, 0.96), rgba(18, 4, 5, 0.98));
+      --choice-border: rgba(255, 98, 88, 0.36);
+      --choice-hover: rgba(255, 111, 97, 0.46);
+      --overlay-bg: rgba(8, 1, 1, 0.72);
+      --modal-bg: linear-gradient(180deg, rgba(58, 13, 12, 0.98), rgba(15, 3, 4, 0.98));
+      --modal-border: rgba(255, 91, 82, 0.38);
+    }
+
+    .app {
+      width: min(800px, 100%);
+      height: min(100%, calc(100svh - clamp(20px, 3.6vh, 48px)));
+      display: grid;
+      grid-template-columns: minmax(260px, 360px) minmax(280px, 1fr);
+      gap: clamp(14px, 1.8vw, 28px);
+      align-items: stretch;
+    }
+
+    .panel {
+
+      background: var(--panel);
+      border: 2px solid var(--panel-edge);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      min-height: 0;
+      position: relative;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--panel-inner);
+      box-shadow: inset 0 0 28px var(--panel-glow);
+      pointer-events: none;
+    }
+
+    .left-panel {
+      padding: clamp(16px, 1.8vh, 22px) clamp(16px, 1.8vw, 22px) clamp(18px, 2vh, 26px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .right-panel {
+      padding: clamp(18px, 2vh, 28px);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-height: 0;
+    }
+
+    .hero {
+      text-align: center;
+    }
+
+    .logo-mark {
+      display: block;
+      width: min(100%, 420px);
+      margin: 0;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.4));
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      background: var(--stat-panel);
+      border-radius: 8px;
+      border: 1px solid var(--stat-border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat-value {
+      margin-top: 4px;
+      font-size: clamp(1.35rem, 2.2vh, 1.8rem);
+      font-weight: 700;
+    }
+
+    .field-shell {
+      position: relative;
+      width: var(--field-w);
+      height: var(--field-h);
+      aspect-ratio: calc(var(--field-w) / var(--field-h));
+      max-width: 100%;
+      max-height: 100%;
+      padding: 0px;
+      border-radius: 0px;
+      overflow: hidden;
+      background: var(--field-bg);
+      border: 1px solid var(--field-edge);
+      box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.4), 0 0 28px var(--field-glow);
+    }
+
+    .field {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(var(--board-width), 1fr);
+      grid-template-rows: repeat(var(--board-height), 1fr);
+      gap: var(--grid-gap);
+      overflow: hidden;
+      background: var(--field-bg);
+    }
+
+    .cell {
+      background: var(--cell-bg);
+      border: .5px solid var(--cell-border);
+      transition: background 140ms ease, transform 140ms ease;
+    }
+
+    .cell.filled {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.03) 34%, transparent 58%),
+        linear-gradient(180deg, var(--piece-top, #3af3ff) 0%, color-mix(in srgb, var(--piece-top, #3af3ff) 65%, var(--piece-bottom, #0dc9ff)) 46%, var(--piece-bottom, #0dc9ff) 100%);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.25),
+        0 0 10px var(--piece-shadow, rgba(35, 215, 255, 0.38));
+    }
+
+    .ghost-piece {
+      position: absolute;
+      inset: 0px;
+      pointer-events: none;
+    }
+
+    .ghost-cell {
+      position: absolute;
+      background:
+        linear-gradient(180deg, var(--piece-top, #3af3ff) 0%, color-mix(in srgb, var(--piece-top, #3af3ff) 65%, var(--piece-bottom, #0dc9ff)) 46%, var(--piece-bottom, #0dc9ff) 100%);
+
+      opacity: 0;
+    }
+
+    .queue-card {
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(110, 96, 70, 0.08);
+    }
+
+    .queue-head,
+    .choices-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .queue-head strong,
+    .choices-head strong {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .queue-head span,
+    .choices-head span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .queue-preview {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .piece-grid {
+      display: inline-grid;
+      gap: 4px;
+      justify-content: center;
+      align-content: center;
+    }
+
+    .mini-cell {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid rgba(83, 95, 128, 0.32);
+    }
+
+    .mini-cell.active {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.2), transparent 42%),
+        linear-gradient(180deg, var(--piece-top, #3af3ff) 0%, color-mix(in srgb, var(--piece-top, #3af3ff) 65%, var(--piece-bottom, #0dc9ff)) 46%, var(--piece-bottom, #0dc9ff) 100%);
+      border-color: rgba(171, 241, 255, 0.58);
+      box-shadow: 0 0 8px var(--piece-shadow, rgba(35, 215, 255, 0.25));
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .primary-btn {
+      background: var(--primary-btn);
+      color: white;
+      box-shadow: 0 12px 24px var(--primary-shadow);
+    }
+
+    .secondary-btn {
+      background: var(--secondary-btn);
+      color: var(--text);
+    }
+
+    .status {
+      min-height: 0;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: var(--status-bg);
+      color: var(--status-text);
+      line-height: 1.3;
+      font-size: 0.92rem;
+    }
+
+    .status.lose {
+      background: rgba(255, 70, 112, 0.14);
+      color: #ffc2d1;
+    }
+
+    .choices-timer {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--timer-bg);
+      border: 1px solid var(--timer-border);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.26);
+    }
+
+    .choices-timer-bar {
+      width: 100%;
+      height: 100%;
+      transform-origin: left center;
+      transform: scaleX(0);
+      background: var(--timer-bar);
+      box-shadow: 0 0 16px var(--timer-shadow);
+    }
+
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(160px, 190px));
+      gap: 16px;
+      justify-content: center;
+      align-content: start;
+    }
+
+    .choice {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--choice-border);
+      background: var(--choice-bg);
+      min-height: 170px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .choice:hover:not(:disabled) {
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        0 18px 34px rgba(3, 10, 30, 0.5),
+        0 0 0 1px var(--choice-hover);
+    }
+
+    .shape-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100px;
+      width: 100%;
+      border-radius: 18px;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--overlay-bg);
+      backdrop-filter: blur(10px);
+    }
+
+    .overlay.visible {
+      display: flex;
+    }
+
+    .modal {
+      width: min(600px, 100%);
+      padding: 28px;
+      border-radius: 28px;
+      background: var(--modal-bg);
+      border: 1px solid var(--modal-border);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .modal-logo {
+      display: block;
+      width: 100%;
+      margin: 0 16px 16px 16px;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.32));
+    }
+
+    .modal h2 {
+      margin: 0 0 10px;
+      font-size: clamp(1.5rem, 2.4vw, 2.4rem);
+    }
+
+    .modal h3 {
+      margin: 0 0 20px;
+      font-size: 1.3rem;
+    }
+
+    .modal p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .modal-actions {
+      display: grid;
+      gap: 12px;
+    }
+
+    .mode-btn {
+      width: 100%;
+      padding: 16px 18px;
+      border-radius: 18px;
+      text-align: left;
+      background: var(--choice-bg);
+      border: 1px solid var(--choice-border);
+      color: var(--text);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 24px rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mode-btn strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 1rem;
+    }
+
+    .mode-btn span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.4;
+      font-weight: 400;
+    }
+
+    #mode-versus-btn {
+      background:
+        radial-gradient(circle at 18% 0%, rgba(156, 42, 37, 0.14), transparent 42%),
+        linear-gradient(180deg, rgba(38, 9, 9, 0.98), rgba(14, 3, 4, 0.98));
+      border-color: rgba(170, 58, 52, 0.34);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 0 22px rgba(130, 24, 22, 0.08),
+        0 12px 26px rgba(38, 3, 5, 0.3),
+        0 0 0 1px rgba(142, 34, 31, 0.06);
+    }
+
+    #mode-versus-btn::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(151, 43, 38, 0.08), transparent 36%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 34%);
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
+    #mode-versus-btn strong,
+    #mode-versus-btn span {
+      position: relative;
+      z-index: 1;
+    }
+
+    #mode-versus-btn strong {
+      color: #f5ddd8;
+      text-shadow: 0 0 10px rgba(164, 44, 39, 0.14);
+    }
+
+    #mode-versus-btn span {
+      color: #d9aaa3;
+    }
+
+    #mode-versus-btn:hover:not(:disabled) {
+      border-color: rgba(192, 70, 63, 0.5);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.07),
+        inset 0 0 26px rgba(154, 34, 30, 0.12),
+        0 16px 32px rgba(50, 4, 6, 0.38),
+        0 0 0 1px rgba(174, 56, 50, 0.2);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .left-panel {
+        order: 2;
+      }
+
+      .right-panel {
+        order: 1;
+      }
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 14px;
+        height: auto;
+        min-height: 100svh;
+        overflow: auto;
+      }
+
+      .right-panel,
+      .left-panel {
+        padding: 20px;
+        border-radius: 8px;
+      }
+
+      .choices {
+        grid-template-columns: minmax(160px, 190px);
+      }
+
+      .choice {
+        min-height: 0;
+      }
+
+      .field-shell {
+        max-height: none;
+      }
+    }
+
+    @media (max-height: 860px) and (min-width: 981px) {
+      .choice {
+        min-height: 185px;
+      }
+
+      .shape-wrap {
+        min-height: 72px;
+      }
+
+      .mini-cell {
+        width: 15px;
+        height: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel left-panel">
+      <div class="field-shell">
+        <div class="field" id="field"></div>
+        <div class="ghost-piece" id="ghost-piece"></div>
+      </div>
+    </section>
+
+    <section class="panel right-panel">
+      <div class="hero">
+        <img class="logo-mark" src="./img.png" alt="Антитетрис">
+        </div>
+<p class="subtitle" id="subtitle">Твоя цель — завалить компьютер. Выбирай самые неудобные фигуры, чтобы ИИ не смог их выгодно поставить и как можно быстрее переполнил стакан.<br />Чем меньше очков заработает компьютер, тем больше ты молодец!</p>
+      
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Очки</div>
+          <div class="stat-value" id="score-count">0</div>
+        </div>
+      </div>
+
+      <div class="choices-timer" aria-hidden="true">
+        <div class="choices-timer-bar" id="choices-timer-bar"></div>
+      </div>
+      <div class="choices" id="choices"></div>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2 id="overlay-title">Компьютер проиграл</h2>
+      <p id="overlay-copy"></p>
+      <button class="primary-btn" id="overlay-btn">Сыграть еще</button>
+    </div>
+  </div>
+
+  <div class="overlay visible" id="mode-overlay">
+    <div class="modal">
+      <img class="modal-logo" src="./img.png" alt="Антитетрис">
+      
+      <p>Правила поменялись, теперь ты выбираешь геометрический хлам, 
+        а кремниевый раб обязан покорно раскладывать твои подачки</p>
+      <h3>Выбери режим игры</h3>
+      <div class="modal-actions">
+        <button class="mode-btn" id="mode-coop-btn" type="button">
+          <strong>Кремниевый терпила — твой бро</strong>
+          <span>В режиме совместной деградации вам придётся сплотить свои скромные интеллектуальные усилия ради выживания. Нежно скармливай этой консервной банке самые простые палочки и квадраты и вместе набирайте очки, пока у тебя не закончатся силы жалеть бесполезное железо.</span>
+        </button>
+        <button class="mode-btn" id="mode-versus-btn" type="button">
+          <strong>Кожаный мешок против тостера</strong>
+          <span>Врубай режим тотальной войны и докажи этому самодовольному кибер-сверхразуму, кто тут босс. Твоя задача — подсовывать компьютеру самые уродливые, изломанные и неудобные фигуры, чтобы он гарантированно не смог их никуда пристроить. Ломай ему логику, забивай его стакан хламом до самого верха и сделай так, чтобы этот кусок железа опозорился и проиграл как можно быстрее.</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WIDTH = 7;
+    const HEIGHT = 16;
+    const OFFER_COUNT = 4;
+    const OFFER_TIMEOUT_MS = 4000;
+    const OFFER_REFRESH_FREEZE_MS = 300;
+    const BASE_SIZE_RANGE = { min: 4, max: 5 };
+    const LOOKAHEAD_SAMPLE = 10;
+    const GRID_GAP = 1;
+    const TIMER_SCORE_DELTA = 5;
+    const VERSUS_START_SCORE = 100;
+    const VERSUS_LINE_PENALTY = 5;
+    const SIZE_SCORE_STEP = 500;
+    const PIECE_COLORS = [
+      { key: "red", top: "#ff4d6d", bottom: "#f31242", shadow: "rgba(255, 77, 109, 0.34)" },
+      { key: "orange", top: "#ff9d2f", bottom: "#ff5f12", shadow: "rgba(255, 149, 47, 0.34)" },
+      { key: "yellow", top: "#ffe44f", bottom: "#ffbf1f", shadow: "rgba(255, 228, 79, 0.34)" },
+      { key: "green", top: "#68f24a", bottom: "#29be18", shadow: "rgba(104, 242, 74, 0.34)" },
+      { key: "cyan", top: "#32e5ff", bottom: "#0c8fff", shadow: "rgba(50, 229, 255, 0.34)" },
+      { key: "pink", top: "#e45cff", bottom: "#ac20d3", shadow: "rgba(228, 92, 255, 0.34)" },
+    ];
+    const COLOR_BY_KEY = Object.fromEntries(PIECE_COLORS.map((color) => [color.key, color]));
+
+    const leftPanelEl = document.querySelector(".left-panel");
+    const fieldShellEl = document.querySelector(".field-shell");
+    const fieldEl = document.getElementById("field");
+    const ghostEl = document.getElementById("ghost-piece");
+    const choicesEl = document.getElementById("choices");
+    const choicesTimerBarEl = document.getElementById("choices-timer-bar");
+    const subtitleEl = document.getElementById("subtitle");
+    const queuePreviewEl = document.getElementById("queue-preview");
+    const queueLabelEl = document.getElementById("queue-label");
+    const statusEl = document.getElementById("status");
+    const scoreCountEl = document.getElementById("score-count");
+    const overlayEl = document.getElementById("overlay");
+    const overlayTitleEl = document.getElementById("overlay-title");
+    const overlayCopyEl = document.getElementById("overlay-copy");
+    const overlayBtnEl = document.getElementById("overlay-btn");
+    const modeOverlayEl = document.getElementById("mode-overlay");
+    const modeCoopBtnEl = document.getElementById("mode-coop-btn");
+    const modeVersusBtnEl = document.getElementById("mode-versus-btn");
+    const restartBtnEl = document.getElementById("restart-btn");
+    const hintBtnEl = document.getElementById("hint-btn");
+    let boardResizeObserver = null;
+    let audioContext = null;
+    let offerTimeoutId = null;
+    let offerProgressFrameId = null;
+    let offerTimerStartedAt = 0;
+
+    const cells = [];
+    const polyominoPools = new Map();
+    const GAME_MODES = {
+      coop: {
+        subtitle: "Вы играете в одной команде. Выбирай самые простые фигуры: в этом режиме ты помогаешь компьютеру набрать максимум очков.<br />Если время выйдет, на поле упадет случайная фигура из текущего набора, а команда потеряет 25 очков.",
+        startStatus: "Выбирай самые простые фигуры справа: если замешкаешься, компьютер получит случайную фигуру из текущего набора, а команда потеряет 10 очков.",
+        timerMessage: "Время вышло: компьютер получил случайную фигуру из текущего набора, а команда потеряла 10 очков.",
+        timerScoreDelta: -25,
+        finishTitle: "Битва закончена",
+        finishMessage(score, turns) {
+          return `Команда продержалась ${turns} ${pluralizeTurns(turns)} и набрала ${score} ${pluralizePoints(score)}.`;
+        },
+      },
+      versus: {
+        subtitle: "Твоя цель — завалить компьютер. В режиме Versus ты начинаешь со 100 очков.<br />Каждая автоматическая смена фигур по таймеру отнимает 5 очков, и каждая полностью собранная компьютером линия тоже отнимает 5 очков. Если очки закончатся, компьютер победит.",
+        startStatus: "Выбери одну из четырех фигур справа. Не давай компьютеру закрывать линии и береги очки.",
+        timerMessage: "Время вышло, набор фигур обновился. Минус 5 очков.",
+        timerScoreDelta: -TIMER_SCORE_DELTA,
+        finishTitle: "Раунд завершен",
+        finishMessage(score, turns, result) {
+          if (result === "computer-won") {
+            return `Компьютер дождался, пока счет опустится до 0. Ты продержался ${turns} ${pluralizeTurns(turns)}.`;
+          }
+          return `Стакан переполнен, а у тебя осталось ${score} ${pluralizePoints(score)}. Ты победил за ${turns} ${pluralizeTurns(turns)}.`;
+        },
+      },
+    };
+
+    const state = {
+      board: createBoard(),
+      offered: [],
+      nextPiece: null,
+      turn: 0,
+      score: 0,
+      clearedLines: 0,
+      busy: false,
+      choicesFrozen: false,
+      gameOver: false,
+      mode: null,
+      unlockedSizeLevel: 0,
+    };
+
+    syncBoardDimensions();
+    buildField();
+    attachEvents();
+
+    function createBoard() {
+      return Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(0));
+    }
+
+    function getAudioContext() {
+      if (!window.AudioContext && !window.webkitAudioContext) {
+        return null;
+      }
+      if (!audioContext) {
+        const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContextCtor();
+      }
+      return audioContext;
+    }
+
+    function ensureAudioReady() {
+      const context = getAudioContext();
+      if (!context) {
+        return null;
+      }
+      if (context.state === "suspended") {
+        context.resume().catch(() => {});
+      }
+      return context;
+    }
+
+    function playToneSequence(tones) {
+      const context = ensureAudioReady();
+      if (!context) {
+        return;
+      }
+
+      const startAt = context.currentTime + 0.01;
+      tones.reduce((offset, tone) => {
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        oscillator.type = tone.type || "sine";
+        oscillator.frequency.setValueAtTime(tone.frequency, startAt + offset);
+        gainNode.gain.setValueAtTime(0.0001, startAt + offset);
+        gainNode.gain.exponentialRampToValueAtTime(tone.volume ?? 0.08, startAt + offset + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + offset + tone.duration);
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        oscillator.start(startAt + offset);
+        oscillator.stop(startAt + offset + tone.duration + 0.02);
+        return offset + (tone.gap ?? tone.duration);
+      }, 0);
+    }
+
+    function playSelectSound() {
+      playToneSequence([
+        { frequency: 520, duration: 0.08, type: "triangle", volume: 0.05, gap: 0.05 },
+        { frequency: 780, duration: 0.12, type: "triangle", volume: 0.07 },
+      ]);
+    }
+
+    function playDropSound() {
+      playToneSequence([
+        { frequency: 160, duration: 0.08, type: "square", volume: 0.045, gap: 0.04 },
+        { frequency: 110, duration: 0.16, type: "sine", volume: 0.07 },
+      ]);
+    }
+
+    function playClearLineSound(linesCleared) {
+      const notes = linesCleared > 1 ? [660, 820, 980] : [660, 820, 980];
+      playToneSequence(notes.map((frequency) => ({
+        frequency,
+        duration: 0.1,
+        type: "triangle",
+        volume: 0.08,
+        gap: 0.07,
+      })));
+    }
+
+    function syncBoardDimensions() {
+      document.documentElement.style.setProperty("--board-width", String(WIDTH));
+      document.documentElement.style.setProperty("--board-height", String(HEIGHT));
+      document.documentElement.style.setProperty("--grid-gap", `${GRID_GAP}px`);
+      fitBoardToPanel();
+    }
+
+    function buildField() {
+      for (let y = 0; y < HEIGHT; y += 1) {
+        for (let x = 0; x < WIDTH; x += 1) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          fieldEl.appendChild(cell);
+          cells.push(cell);
+        }
+      }
+    }
+
+    function attachEvents() {
+      window.addEventListener("resize", fitBoardToPanel);
+      if (typeof ResizeObserver !== "undefined" && leftPanelEl) {
+        boardResizeObserver = new ResizeObserver(() => {
+          fitBoardToPanel();
+        });
+        boardResizeObserver.observe(leftPanelEl);
+      }
+      if (restartBtnEl) {
+        restartBtnEl.addEventListener("click", openModeDialog);
+      }
+      overlayBtnEl.addEventListener("click", openModeDialog);
+      modeCoopBtnEl.addEventListener("click", () => startGame("coop"));
+      modeVersusBtnEl.addEventListener("click", () => startGame("versus"));
+      if (hintBtnEl) {
+        hintBtnEl.addEventListener("click", () => {
+          setStatus("Ты хочешь создавать неровности, колодцы и выступы. Компьютер любит длинные плоские поверхности и фигуры, которые сразу закрывают ряд.", false);
+        });
+      }
+    }
+
+    function fitBoardToPanel() {
+      if (!leftPanelEl || !fieldShellEl) {
+        return;
+      }
+
+      const panelStyles = window.getComputedStyle(leftPanelEl);
+      const availableWidth =
+        leftPanelEl.clientWidth -
+        parseFloat(panelStyles.paddingLeft) -
+        parseFloat(panelStyles.paddingRight);
+      const availableHeight =
+        leftPanelEl.clientHeight -
+        parseFloat(panelStyles.paddingTop) -
+        parseFloat(panelStyles.paddingBottom);
+
+      if (availableWidth <= 0 || availableHeight <= 0) {
+        return;
+      }
+
+      const cellByWidth = (availableWidth - (GRID_GAP * (WIDTH - 1))) / WIDTH;
+      const cellByHeight = (availableHeight - (GRID_GAP * (HEIGHT - 1))) / HEIGHT;
+      const cellSize = Math.max(0, Math.min(cellByWidth, cellByHeight));
+      const fieldWidth = (cellSize * WIDTH) + (GRID_GAP * (WIDTH - 1));
+      const fieldHeight = (cellSize * HEIGHT) + (GRID_GAP * (HEIGHT - 1));
+
+      document.documentElement.style.setProperty("--cell", `${cellSize}px`);
+      fieldShellEl.style.width = `${fieldWidth}px`;
+      fieldShellEl.style.height = `${fieldHeight}px`;
+    }
+
+    function openModeDialog() {
+      stopOfferTimer();
+      overlayEl.classList.remove("visible");
+      delete document.body.dataset.mode;
+      modeOverlayEl.classList.add("visible");
+    }
+
+    function startGame(modeKey = state.mode || "versus") {
+      const mode = GAME_MODES[modeKey] || GAME_MODES.versus;
+      stopOfferTimer();
+      state.board = createBoard();
+      state.offered = [];
+      state.nextPiece = null;
+      state.turn = 0;
+      state.score = modeKey === "versus" ? VERSUS_START_SCORE : 0;
+      state.clearedLines = 0;
+      state.busy = false;
+      state.choicesFrozen = false;
+      state.gameOver = false;
+      state.mode = modeKey;
+      document.body.dataset.mode = modeKey;
+      state.unlockedSizeLevel = 0;
+      overlayEl.classList.remove("visible");
+      modeOverlayEl.classList.remove("visible");
+      if (subtitleEl) {
+        subtitleEl.innerHTML = mode.subtitle;
+      }
+      setStatus(mode.startStatus, false);
+      refillOffers();
+      render();
+    }
+
+    function refillOffers() {
+      state.offered = uniqueOfferPieces(OFFER_COUNT);
+      state.choicesFrozen = false;
+      renderChoices();
+      startOfferTimer();
+    }
+
+    function pieceFromTemplate(template) {
+      const color = PIECE_COLORS[Math.floor(Math.random() * PIECE_COLORS.length)];
+      return {
+        ...template,
+        id: `${template.key}-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(16).slice(2)}`,
+        colorKey: color.key,
+      };
+    }
+
+    function uniqueOfferPieces(count) {
+      const pool = getCurrentOfferPool();
+      return shuffle(pool)
+        .slice(0, Math.min(count, pool.length))
+        .map(pieceFromTemplate);
+    }
+
+    function getCurrentOfferPool() {
+      const range = getCurrentSizeRange();
+      const pool = [];
+      for (let size = range.min; size <= range.max; size += 1) {
+        pool.push(...getPolyominoPool(size));
+      }
+      return pool;
+    }
+
+    function getCurrentSizeRange() {
+      if (state.mode !== "coop") {
+        return { ...BASE_SIZE_RANGE };
+      }
+      return {
+        //min: BASE_SIZE_RANGE.min + state.unlockedSizeLevel,
+        min: BASE_SIZE_RANGE.min,
+        max: BASE_SIZE_RANGE.max + state.unlockedSizeLevel,
+      };
+    }
+
+    function getPolyominoPool(size) {
+      if (!polyominoPools.has(size)) {
+        polyominoPools.set(size, generatePolyominoPool(size));
+      }
+      return polyominoPools.get(size);
+    }
+
+    function generatePolyominoPool(size) {
+      const pool = [];
+      const seen = new Map();
+      buildShapes(size, [[0, 0]], seen);
+      for (const canonical of seen.values()) {
+        const coords = canonical.split("|").map((cell) => cell.split(",").map(Number));
+        const rotations = uniqueRotations(coords);
+        const bounds = boundsOf(coords);
+        const width = bounds.maxX + 1;
+        const height = bounds.maxY + 1;
+        pool.push({
+          key: canonical,
+          size,
+          coords,
+          rotations,
+          width,
+          height,
+          density: Number((size / (width * height)).toFixed(2)),
+        });
+      }
+      return shuffle(pool);
+    }
+
+    function buildShapes(targetSize, shape, seen) {
+      if (shape.length === targetSize) {
+        seen.set(canonicalKey(shape), canonicalKey(shape));
+        return;
+      }
+
+      const frontier = new Set();
+      for (const [x, y] of shape) {
+        const neighbors = [
+          [x + 1, y],
+          [x - 1, y],
+          [x, y + 1],
+          [x, y - 1],
+        ];
+        for (const [nx, ny] of neighbors) {
+          if (!shape.some(([sx, sy]) => sx === nx && sy === ny)) {
+            frontier.add(`${nx},${ny}`);
+          }
+        }
+      }
+
+      for (const item of frontier) {
+        const [x, y] = item.split(",").map(Number);
+        buildShapes(targetSize, [...shape, [x, y]], seen);
+      }
+    }
+
+    function canonicalKey(shape) {
+      const variants = [];
+      let current = shape.map(([x, y]) => [x, y]);
+      for (let i = 0; i < 4; i += 1) {
+        variants.push(normalize(current));
+        variants.push(normalize(current.map(([x, y]) => [-x, y])));
+        current = current.map(([x, y]) => [-y, x]);
+      }
+      return variants.sort()[0];
+    }
+
+    function uniqueRotations(shape) {
+      const rotations = [];
+      const seen = new Set();
+      let current = shape.map(([x, y]) => [x, y]);
+      for (let i = 0; i < 4; i += 1) {
+        const key = normalize(current);
+        if (!seen.has(key)) {
+          seen.add(key);
+          const coords = key.split("|").map((cell) => cell.split(",").map(Number));
+          const bounds = boundsOf(coords);
+          rotations.push({
+            key,
+            coords,
+            width: bounds.maxX + 1,
+            height: bounds.maxY + 1,
+          });
+        }
+        current = current.map(([x, y]) => [-y, x]);
+      }
+      return rotations;
+    }
+
+    function normalize(shape) {
+      const minX = Math.min(...shape.map(([x]) => x));
+      const minY = Math.min(...shape.map(([, y]) => y));
+      return shape
+        .map(([x, y]) => [x - minX, y - minY])
+        .sort((a, b) => (a[1] - b[1]) || (a[0] - b[0]))
+        .map(([x, y]) => `${x},${y}`)
+        .join("|");
+    }
+
+    function boundsOf(coords) {
+      return coords.reduce((acc, [x, y]) => ({
+        minX: Math.min(acc.minX, x),
+        maxX: Math.max(acc.maxX, x),
+        minY: Math.min(acc.minY, y),
+        maxY: Math.max(acc.maxY, y),
+      }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+    }
+
+    function shuffle(items) {
+      const copy = [...items];
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function render() {
+      renderBoard();
+      renderChoices();
+      renderQueue();
+      scoreCountEl.textContent = String(state.score);
+    }
+
+    function renderBoard() {
+      cells.forEach((cell, index) => {
+        const y = Math.floor(index / WIDTH);
+        const x = index % WIDTH;
+        const value = state.board[y][x];
+        cell.classList.toggle("filled", Boolean(value));
+        if (value) {
+          applyPieceTone(cell, value);
+        } else {
+          clearPieceTone(cell);
+        }
+      });
+    }
+
+    function renderChoices() {
+      choicesEl.innerHTML = "";
+      for (const piece of state.offered) {
+        const card = document.createElement("button");
+        card.className = "choice";
+        card.disabled = state.busy || state.choicesFrozen || state.gameOver;
+        card.type = "button";
+        card.addEventListener("click", () => choosePiece(piece.id));
+
+        const shapeWrap = document.createElement("div");
+        shapeWrap.className = "shape-wrap";
+        shapeWrap.appendChild(renderMiniPiece(piece, 24));
+
+        card.appendChild(shapeWrap);
+        choicesEl.appendChild(card);
+      }
+    }
+
+    function setOfferTimerProgress(progress) {
+      if (!choicesTimerBarEl) {
+        return;
+      }
+      const clamped = Math.max(0, Math.min(progress, 1));
+      choicesTimerBarEl.style.transform = `scaleX(${clamped})`;
+    }
+
+    function stopOfferTimer() {
+      if (offerTimeoutId !== null) {
+        window.clearTimeout(offerTimeoutId);
+        offerTimeoutId = null;
+      }
+      if (offerProgressFrameId !== null) {
+        window.cancelAnimationFrame(offerProgressFrameId);
+        offerProgressFrameId = null;
+      }
+      offerTimerStartedAt = 0;
+      setOfferTimerProgress(0);
+    }
+
+    function tickOfferTimer() {
+      if (!offerTimerStartedAt) {
+        return;
+      }
+      const elapsed = performance.now() - offerTimerStartedAt;
+      setOfferTimerProgress(elapsed / OFFER_TIMEOUT_MS);
+      if (elapsed < OFFER_TIMEOUT_MS && !state.busy && !state.gameOver) {
+        offerProgressFrameId = window.requestAnimationFrame(tickOfferTimer);
+      } else {
+        offerProgressFrameId = null;
+      }
+    }
+
+    function startOfferTimer() {
+      stopOfferTimer();
+      if (state.busy || state.choicesFrozen || state.gameOver || state.offered.length === 0) {
+        return;
+      }
+      offerTimerStartedAt = performance.now();
+      setOfferTimerProgress(0);
+      offerProgressFrameId = window.requestAnimationFrame(tickOfferTimer);
+      offerTimeoutId = window.setTimeout(() => {
+        offerTimeoutId = null;
+        offerProgressFrameId = null;
+        if (state.busy || state.gameOver) {
+          return;
+        }
+        if (state.mode === "coop") {
+          applyTimerScoreDelta();
+          if (state.gameOver) {
+            return;
+          }
+          const randomPiece = state.offered[Math.floor(Math.random() * state.offered.length)];
+          if (randomPiece) {
+            queuePiece(randomPiece, {
+              freezeChoicesMs: OFFER_REFRESH_FREEZE_MS,
+              statusMessage: GAME_MODES[state.mode].timerMessage,
+            });
+          }
+          return;
+        }
+        applyTimerScoreDelta();
+        if (state.gameOver) {
+          return;
+        }
+        state.offered = uniqueOfferPieces(OFFER_COUNT);
+        renderChoices();
+        setStatus(GAME_MODES[state.mode].timerMessage, false);
+        startOfferTimer();
+      }, OFFER_TIMEOUT_MS);
+    }
+
+    function renderQueue() {
+      if (!queuePreviewEl || !queueLabelEl) {
+        return;
+      }
+      queuePreviewEl.innerHTML = "";
+      if (!state.nextPiece) {
+        queueLabelEl.textContent = "Выбери одну справа";
+        return;
+      }
+      queueLabelEl.textContent = `${shapeName(state.nextPiece)} · ${state.nextPiece.size} клетки`;
+      queuePreviewEl.appendChild(renderMiniPiece(state.nextPiece, 20));
+    }
+
+    function renderMiniPiece(piece, size) {
+      const bounds = boundsOf(piece.coords);
+      const grid = document.createElement("div");
+      grid.className = "piece-grid";
+      grid.style.gridTemplateColumns = `repeat(${bounds.maxX + 1}, ${size}px)`;
+      grid.style.gridTemplateRows = `repeat(${bounds.maxY + 1}, ${size}px)`;
+      const active = new Set(piece.coords.map(([x, y]) => `${x},${y}`));
+      for (let y = 0; y <= bounds.maxY; y += 1) {
+        for (let x = 0; x <= bounds.maxX; x += 1) {
+          const cell = document.createElement("div");
+          cell.className = `mini-cell${active.has(`${x},${y}`) ? " active" : ""}`;
+          cell.style.width = `${size}px`;
+          cell.style.height = `${size}px`;
+          if (active.has(`${x},${y}`)) {
+            applyPieceTone(cell, piece.colorKey);
+          }
+          grid.appendChild(cell);
+        }
+      }
+      return grid;
+    }
+
+    function choosePiece(pieceId) {
+      if (state.busy || state.choicesFrozen || state.gameOver) {
+        return;
+      }
+      const selected = state.offered.find((piece) => piece.id === pieceId);
+      if (!selected) {
+        return;
+      }
+      queuePiece(selected, {
+        statusMessage: `Фигура ${shapeName(selected)} отправлена в очередь. Компьютер подбирает лучшую постановку.`,
+      });
+    }
+
+    function queuePiece(selected, options = {}) {
+      const {
+        freezeChoicesMs = 0,
+        statusMessage = `Фигура ${shapeName(selected)} отправлена в очередь. Компьютер подбирает лучшую постановку.`,
+        playSound = true,
+      } = options;
+
+      state.nextPiece = selected;
+      state.busy = true;
+      state.choicesFrozen = freezeChoicesMs > 0;
+      ensureAudioReady();
+      if (playSound) {
+        playSelectSound();
+      }
+      stopOfferTimer();
+      renderQueue();
+      renderChoices();
+      setStatus(statusMessage, false);
+
+      window.setTimeout(() => {
+        const placement = findBestPlacement(state.board, selected);
+        if (!placement) {
+          state.busy = false;
+          state.choicesFrozen = false;
+          if (state.mode === "versus") {
+            finishVersusGame(state.score === 0 ? "computer-won" : "player-won");
+          } else {
+            finishGame();
+          }
+          return;
+        }
+        animatePlacement(placement, () => {
+          applyPlacement(placement);
+          state.turn += 1;
+          state.nextPiece = null;
+          state.busy = false;
+          if (state.mode === "versus" && state.score === 0) {
+            finishVersusGame("computer-won");
+            return;
+          }
+          render();
+          if (freezeChoicesMs > 0) {
+            window.setTimeout(() => {
+              if (state.gameOver) {
+                return;
+              }
+              refillOffers();
+              render();
+            }, freezeChoicesMs);
+            return;
+          }
+          refillOffers();
+          render();
+        });
+      }, 320);
+    }
+
+    function findBestPlacement(board, piece, options = {}) {
+      const { skipLookahead = false } = options;
+      const candidates = [];
+      for (const rotation of piece.rotations) {
+        for (let x = 0; x <= WIDTH - rotation.width; x += 1) {
+          const y = findDropRow(board, rotation, x);
+          if (y === null) {
+            continue;
+          }
+          const simulated = cloneBoard(board);
+          placeOnBoard(simulated, rotation.coords, x, y);
+          const cleared = clearLines(simulated);
+          const metrics = evaluateBoard(simulated);
+          const immediateScore = scoreBoard(metrics, cleared);
+          const futurePressure = skipLookahead ? 0 : estimateFuturePressure(simulated);
+          candidates.push({
+            x,
+            y,
+            rotation,
+            pieceSize: piece.size,
+            colorKey: piece.colorKey || null,
+            linesCleared: cleared,
+            metrics,
+            score: immediateScore + futurePressure,
+          });
+        }
+      }
+
+      candidates.sort((a, b) => {
+        return b.score - a.score;
+      });
+
+      return candidates[0] || null;
+    }
+
+    function estimateFuturePressure(board) {
+      const activePool = getCurrentOfferPool();
+      const sample = shuffle(activePool).slice(0, Math.min(LOOKAHEAD_SAMPLE, activePool.length));
+      let worstCase = Infinity;
+
+      for (const template of sample) {
+        const placement = findBestPlacement(board, template, { skipLookahead: true });
+        if (!placement) {
+          return -200000;
+        }
+        worstCase = Math.min(worstCase, placement.score);
+      }
+
+      return Number.isFinite(worstCase) ? worstCase * 0.55 : 0;
+    }
+
+    function findDropRow(board, rotation, offsetX) {
+      let finalY = null;
+      for (let y = 0; y <= HEIGHT - rotation.height; y += 1) {
+        if (!canPlace(board, rotation.coords, offsetX, y)) {
+          if (finalY === null) {
+            return null;
+          }
+          return finalY;
+        }
+        finalY = y;
+      }
+      return finalY;
+    }
+
+    function canPlace(board, coords, offsetX, offsetY) {
+      return coords.every(([x, y]) => {
+        const tx = x + offsetX;
+        const ty = y + offsetY;
+        return tx >= 0 && tx < WIDTH && ty >= 0 && ty < HEIGHT && board[ty][tx] === 0;
+      });
+    }
+
+    function cloneBoard(board) {
+      return board.map((row) => [...row]);
+    }
+
+    function placeOnBoard(board, coords, offsetX, offsetY, fillValue = 1) {
+      for (const [x, y] of coords) {
+        board[y + offsetY][x + offsetX] = fillValue;
+      }
+    }
+
+    function clearLines(board) {
+      let cleared = 0;
+      for (let y = HEIGHT - 1; y >= 0; y -= 1) {
+        if (board[y].every(Boolean)) {
+          board.splice(y, 1);
+          board.unshift(Array(WIDTH).fill(0));
+          cleared += 1;
+          y += 1;
+        }
+      }
+      return cleared;
+    }
+
+    function evaluateBoard(board) {
+      const heights = Array(WIDTH).fill(0);
+      let holes = 0;
+      let holeDepth = 0;
+      for (let x = 0; x < WIDTH; x += 1) {
+        let seenBlock = false;
+        for (let y = 0; y < HEIGHT; y += 1) {
+          if (board[y][x]) {
+            if (!seenBlock) {
+              heights[x] = HEIGHT - y;
+              seenBlock = true;
+            }
+          } else if (seenBlock) {
+            holes += 1;
+            holeDepth += HEIGHT - y;
+          }
+        }
+      }
+
+      let bumpiness = 0;
+      for (let x = 0; x < WIDTH - 1; x += 1) {
+        bumpiness += Math.abs(heights[x] - heights[x + 1]);
+      }
+
+      let rowTransitions = 0;
+      for (let y = 0; y < HEIGHT; y += 1) {
+        let previousFilled = true;
+        for (let x = 0; x < WIDTH; x += 1) {
+          const filled = Boolean(board[y][x]);
+          if (filled !== previousFilled) {
+            rowTransitions += 1;
+          }
+          previousFilled = filled;
+        }
+        if (!previousFilled) {
+          rowTransitions += 1;
+        }
+      }
+
+      let columnTransitions = 0;
+      for (let x = 0; x < WIDTH; x += 1) {
+        let previousFilled = true;
+        for (let y = 0; y < HEIGHT; y += 1) {
+          const filled = Boolean(board[y][x]);
+          if (filled !== previousFilled) {
+            columnTransitions += 1;
+          }
+          previousFilled = filled;
+        }
+        if (!previousFilled) {
+          columnTransitions += 1;
+        }
+      }
+
+      let wells = 0;
+      for (let x = 0; x < WIDTH; x += 1) {
+        let wellDepth = 0;
+        for (let y = 0; y < HEIGHT; y += 1) {
+          const leftFilled = x === 0 || Boolean(board[y][x - 1]);
+          const rightFilled = x === WIDTH - 1 || Boolean(board[y][x + 1]);
+          if (board[y][x] === 0 && leftFilled && rightFilled) {
+            wellDepth += 1;
+            wells += wellDepth;
+          } else {
+            wellDepth = 0;
+          }
+        }
+      }
+
+      const nonZeroHeights = heights.filter(Boolean);
+      const minHeight = nonZeroHeights.length ? Math.min(...nonZeroHeights) : 0;
+      const maxHeight = Math.max(...heights);
+      const heightSpread = maxHeight - minHeight;
+      const topRowsDanger = board
+        .slice(0, 6)
+        .reduce((sum, row, index) => sum + row.reduce((rowSum, cell) => rowSum + (cell ? (6 - index) : 0), 0), 0);
+
+      return {
+        holes,
+        holeDepth,
+        bumpiness,
+        aggregateHeight: heights.reduce((sum, value) => sum + value, 0),
+        maxHeight,
+        heightSpread,
+        rowTransitions,
+        columnTransitions,
+        wells,
+        topRowsDanger,
+      };
+    }
+
+    function scoreBoard(metrics, cleared) {
+      return (
+        (cleared * 12000) -
+        (metrics.holes * 260) -
+        (metrics.holeDepth * 18) -
+        (metrics.aggregateHeight * 20) -
+        (metrics.bumpiness * 28) -
+        (metrics.maxHeight * 34) -
+        (metrics.heightSpread * 42) -
+        (metrics.rowTransitions * 24) -
+        (metrics.columnTransitions * 20) -
+        (metrics.wells * 30) -
+        (metrics.topRowsDanger * 85)
+      );
+    }
+
+    function animatePlacement(placement, onDone) {
+      const { cellWidth, cellHeight, colStep, rowStep } = getFieldMetrics();
+      const startRow = -placement.rotation.height;
+      const distanceRows = placement.y - startRow;
+      const duration = Math.max(240, distanceRows * 42);
+      ghostEl.innerHTML = "";
+
+      for (const [x, y] of placement.rotation.coords) {
+        const cell = document.createElement("div");
+        cell.className = "ghost-cell";
+        applyPieceTone(cell, placement.colorKey);
+        cell.style.width = `${cellWidth}px`;
+        cell.style.height = `${cellHeight}px`;
+        cell.style.left = `${(placement.x + x) * colStep}px`;
+        cell.style.top = `${(startRow + y) * rowStep}px`;
+        cell.style.transition = `top ${duration}ms cubic-bezier(0.2, 0.75, 0.2, 1), opacity 90ms ease-out`;
+        ghostEl.appendChild(cell);
+      }
+
+      const ghostNodes = Array.from(ghostEl.children);
+      window.requestAnimationFrame(() => {
+        ghostNodes.forEach((node) => {
+          node.style.opacity = "1";
+        });
+        window.requestAnimationFrame(() => {
+          ghostNodes.forEach((node, index) => {
+            const [, localY] = placement.rotation.coords[index];
+            node.style.top = `${(placement.y + localY) * rowStep}px`;
+          });
+        });
+      });
+
+      window.setTimeout(() => {
+        ghostEl.innerHTML = "";
+        playDropSound();
+        onDone();
+      }, duration + 40);
+    }
+
+    function getFieldMetrics() {
+      const cellWidth = (fieldEl.clientWidth - (WIDTH - 1)) / WIDTH;
+      const cellHeight = (fieldEl.clientHeight - (HEIGHT - 1)) / HEIGHT;
+      return {
+        cellWidth,
+        cellHeight,
+        colStep: cellWidth + 1,
+        rowStep: cellHeight + 1,
+      };
+    }
+
+    function applyPlacement(placement) {
+      placeOnBoard(state.board, placement.rotation.coords, placement.x, placement.y, placement.colorKey || 1);
+      const cleared = clearLines(state.board);
+      if (state.mode === "coop") {
+        state.score += placement.pieceSize + (cleared * 15);
+      } else if (cleared > 0) {
+        state.score = Math.max(0, state.score - (cleared * VERSUS_LINE_PENALTY));
+      }
+      state.clearedLines += cleared;
+      updateUnlockedSizeLevel();
+
+      if (cleared > 0) {
+        playClearLineSound(cleared);
+        setStatus(
+          state.mode === "coop"
+            ? `Отлично: компьютер закрыл ${cleared} ${pluralizeLines(cleared)} и принес команде еще очки.`
+            : `Компьютер закрыл ${cleared} ${pluralizeLines(cleared)}. Минус ${cleared * VERSUS_LINE_PENALTY} очков.`,
+          false,
+        );
+      } else {
+        setStatus(
+          state.mode === "coop"
+            ? "Компьютер поставил фигуру без закрытия рядов. Ищи еще более удобные варианты."
+            : "Компьютер поставил фигуру, но рядов не закрыл. Давление на стакан растет.",
+          false,
+        );
+      }
+    }
+
+    function finishGame() {
+      stopOfferTimer();
+      state.gameOver = true;
+      state.nextPiece = null;
+      render();
+      setStatus(
+        state.mode === "coop"
+          ? "Поле переполнено: команда больше не может ставить фигуры."
+          : "Хороший саботаж: ни один поворот и ни одна позиция не подошли. Компьютер проиграл.",
+        true,
+      );
+      overlayTitleEl.textContent = GAME_MODES[state.mode].finishTitle;
+      overlayCopyEl.textContent = GAME_MODES[state.mode].finishMessage(state.score, state.turn);
+      overlayEl.classList.add("visible");
+    }
+
+    function finishVersusGame(result) {
+      stopOfferTimer();
+      state.gameOver = true;
+      state.nextPiece = null;
+      render();
+      if (result === "computer-won") {
+        setStatus("Счет дошел до 0: компьютер выиграл.", true);
+      } else {
+        setStatus("Стакан заполнен, а очки еще остались: ты выиграл.", false);
+      }
+      overlayTitleEl.textContent = result === "computer-won" ? "Компьютер победил" : "Ты победил";
+      overlayCopyEl.textContent = GAME_MODES[state.mode].finishMessage(state.score, state.turn, result);
+      overlayEl.classList.add("visible");
+    }
+
+    function setStatus(message, lose) {
+      if (!statusEl) {
+        return;
+      }
+      statusEl.textContent = message;
+      statusEl.classList.toggle("lose", Boolean(lose));
+    }
+
+    function shapeName(piece) {
+      const adjectives = {
+        4: "Короткая",
+        5: "Средняя",
+        6: "Большая",
+        7: "Тяжелая",
+        8: "Гигантская",
+      };
+      const form = piece.width > piece.height ? "полоса" : piece.height > piece.width ? "башня" : "плитка";
+      return `${adjectives[piece.size] || `${piece.size}-клеточная`} ${form}`;
+    }
+
+    function applyTimerScoreDelta() {
+      const mode = GAME_MODES[state.mode];
+      if (!mode) {
+        return;
+      }
+      state.score = Math.max(0, state.score + mode.timerScoreDelta);
+      updateUnlockedSizeLevel();
+      render();
+      if (state.mode === "versus" && state.score === 0) {
+        finishVersusGame("computer-won");
+      }
+    }
+
+    function updateUnlockedSizeLevel() {
+      if (state.mode !== "coop") {
+        state.unlockedSizeLevel = 0;
+        return;
+      }
+      const nextLevel = Math.floor(state.score / SIZE_SCORE_STEP);
+      if (nextLevel > state.unlockedSizeLevel) {
+        state.unlockedSizeLevel = nextLevel;
+        const range = getCurrentSizeRange();
+        setStatus(`Новый уровень фигур: теперь в наборе размеры от ${range.min} до ${range.max} клеток.`, false);
+      }
+    }
+
+    function applyPieceTone(element, colorKey) {
+      const tone = COLOR_BY_KEY[colorKey];
+      if (!tone) {
+        clearPieceTone(element);
+        return;
+      }
+      element.style.setProperty("--piece-top", tone.top);
+      element.style.setProperty("--piece-bottom", tone.bottom);
+      element.style.setProperty("--piece-shadow", tone.shadow);
+    }
+
+    function clearPieceTone(element) {
+      element.style.removeProperty("--piece-top");
+      element.style.removeProperty("--piece-bottom");
+      element.style.removeProperty("--piece-shadow");
+    }
+
+    function pluralizeLines(value) {
+      return pluralize(value, "линия", "линии", "линий");
+    }
+
+    function pluralizeTurns(value) {
+      return pluralize(value, "ход", "хода", "ходов");
+    }
+
+    function pluralizePoints(value) {
+      return pluralize(value, "очко", "очка", "очков");
+    }
+
+    function pluralize(value, one, few, many) {
+      const mod10 = value % 10;
+      const mod100 = value % 100;
+      if (mod10 === 1 && mod100 !== 11) {
+        return one;
+      }
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+        return few;
+      }
+      return many;
+    }
+  </script>
+</body>
+</html>
