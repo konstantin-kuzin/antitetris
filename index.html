@@ -234,7 +234,7 @@
     .cell {
       background: var(--cell-bg);
       border: .5px solid var(--cell-border);
-      transition: background 140ms ease, transform 140ms ease;
+      transition: background 140ms ease, transform 140ms ease, opacity 300ms ease;
     }
 
     .cell.filled {
@@ -244,6 +244,21 @@
       box-shadow:
         inset 0 0 0 1px rgba(255,255,255,0.25),
         0 0 10px var(--piece-shadow, rgba(35, 215, 255, 0.38));
+    }
+
+    .cell.explosion-fade {
+      opacity: 0;
+    }
+
+    .cell.bomb-piece,
+    .ghost-cell.bomb-piece,
+    .mini-cell.active.bomb-piece {
+      background:
+        radial-gradient(circle at 50% 38%, rgba(255, 216, 224, 0.98) 0%, rgba(189, 78, 112, 0.95) 20%, rgba(128, 24, 57, 0.92) 44%, rgba(90, 14, 37, 0.92) 64%, rgba(48, 6, 20, 0.98) 100%),
+        radial-gradient(circle at 52% 42%, rgba(34, 7, 16, 0.96) 0%, rgba(34, 7, 16, 0.96) 16%, rgba(34, 7, 16, 0) 17%);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.28),
+        0 0 12px rgba(140, 29, 61, 0.45);
     }
 
     .ghost-piece {
@@ -678,7 +693,7 @@
     const LOOKAHEAD_SAMPLE = 10;
     const GRID_GAP = 1;
     const TIMER_SCORE_DELTA = 5;
-    const VERSUS_START_SCORE = 100;
+    const VERSUS_START_SCORE = 50;
     const VERSUS_LINE_PENALTY = 5;
     const SIZE_SCORE_STEP = 500;
     const PIECE_COLORS = [
@@ -688,7 +703,9 @@
       { key: "green", top: "#68f24a", bottom: "#29be18", shadow: "rgba(104, 242, 74, 0.34)" },
       { key: "cyan", top: "#32e5ff", bottom: "#0c8fff", shadow: "rgba(50, 229, 255, 0.34)" },
       { key: "pink", top: "#e45cff", bottom: "#ac20d3", shadow: "rgba(228, 92, 255, 0.34)" },
+      { key: "bomb", top: "#8c1d3d", bottom: "#4d0f22", shadow: "rgba(140, 29, 61, 0.45)" },
     ];
+    const REGULAR_PIECE_COLORS = PIECE_COLORS.filter((color) => color.key !== "bomb");
     const COLOR_BY_KEY = Object.fromEntries(PIECE_COLORS.map((color) => [color.key, color]));
 
     const leftPanelEl = document.querySelector(".left-panel");
@@ -722,23 +739,23 @@
     const GAME_MODES = {
       coop: {
         subtitle: "Вы играете в одной команде. Выбирай самые простые фигуры: в этом режиме ты помогаешь компьютеру набрать максимум очков.<br />Если время выйдет, на поле упадет случайная фигура из текущего набора, а команда потеряет 25 очков.",
-        startStatus: "Выбирай самые простые фигуры справа: если замешкаешься, компьютер получит случайную фигуру из текущего набора, а команда потеряет 10 очков.",
-        timerMessage: "Время вышло: компьютер получил случайную фигуру из текущего набора, а команда потеряла 10 очков.",
+        startStatus: "Выбирай самые простые фигуры справа: если замешкаешься, компьютер получит случайную фигуру из текущего набора, а команда потеряет 25 очков.",
+        timerMessage: "Время вышло: компьютер получил случайную фигуру из текущего набора, а команда потеряла 25 очков.",
         timerScoreDelta: -25,
-        finishTitle: "Битва закончена",
+        finishTitle: "Эпическая битва закончена",
         finishMessage(score, turns) {
-          return `Команда продержалась ${turns} ${pluralizeTurns(turns)} и набрала ${score} ${pluralizePoints(score)}.`;
+          return `Дружная команда кожаного мешка и тостера продержалась ${turns} ${pluralizeTurns(turns)} и набрала ${score} ${pluralizePoints(score)}.`;
         },
       },
       versus: {
-        subtitle: "Твоя цель — завалить компьютер. В режиме Versus ты начинаешь со 100 очков.<br />Каждая автоматическая смена фигур по таймеру отнимает 5 очков, и каждая полностью собранная компьютером линия тоже отнимает 5 очков. Если очки закончатся, компьютер победит.",
+        subtitle: "Твоя цель — завалить компьютер. В режиме Versus ты начинаешь с 50 очков.<br />Каждая автоматическая смена фигур по таймеру отнимает 5 очков, и каждая полностью собранная компьютером линия тоже отнимает 5 очков. Если очки закончатся, компьютер победит.",
         startStatus: "Выбери одну из четырех фигур справа. Не давай компьютеру закрывать линии и береги очки.",
         timerMessage: "Время вышло, набор фигур обновился. Минус 5 очков.",
         timerScoreDelta: -TIMER_SCORE_DELTA,
         finishTitle: "Раунд завершен",
         finishMessage(score, turns, result) {
           if (result === "computer-won") {
-            return `Компьютер дождался, пока счет опустится до 0. Ты продержался ${turns} ${pluralizeTurns(turns)}.`;
+            return `Ты продержался ${turns} ${pluralizeTurns(turns)}. Жалкое зрелище.`;
           }
           return `Стакан переполнен, а у тебя осталось ${score} ${pluralizePoints(score)}. Ты победил за ${turns} ${pluralizeTurns(turns)}.`;
         },
@@ -823,6 +840,15 @@
       playToneSequence([
         { frequency: 160, duration: 0.08, type: "square", volume: 0.045, gap: 0.04 },
         { frequency: 110, duration: 0.16, type: "sine", volume: 0.07 },
+      ]);
+    }
+
+    function playBombExplosionSound() {
+      playToneSequence([
+        { frequency: 140, duration: 0.05, type: "square", volume: 0.12, gap: 0.02 },
+        { frequency: 92, duration: 0.08, type: "sawtooth", volume: 0.13, gap: 0.03 },
+        { frequency: 58, duration: 0.18, type: "square", volume: 0.12, gap: 0.04 },
+        { frequency: 34, duration: 0.34, type: "triangle", volume: 0.1 },
       ]);
     }
 
@@ -946,7 +972,8 @@
     }
 
     function pieceFromTemplate(template) {
-      const color = PIECE_COLORS[Math.floor(Math.random() * PIECE_COLORS.length)];
+      const palette = template.type === "bomb" ? [COLOR_BY_KEY.bomb] : REGULAR_PIECE_COLORS;
+      const color = palette[Math.floor(Math.random() * palette.length)];
       return {
         ...template,
         id: `${template.key}-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(16).slice(2)}`,
@@ -967,7 +994,27 @@
       for (let size = range.min; size <= range.max; size += 1) {
         pool.push(...getPolyominoPool(size));
       }
+      pool.push(createBombTemplate());
       return pool;
+    }
+
+    function createBombTemplate() {
+      return {
+        key: "bomb",
+        type: "bomb",
+        size: 1,
+        coords: [[0, 0]],
+        rotations: [{
+          key: "0,0",
+          coords: [[0, 0]],
+          width: 1,
+          height: 1,
+        }],
+        width: 1,
+        height: 1,
+        density: 1,
+        colorKey: "bomb",
+      };
     }
 
     function getCurrentSizeRange() {
@@ -1112,6 +1159,7 @@
         const x = index % WIDTH;
         const value = state.board[y][x];
         cell.classList.toggle("filled", Boolean(value));
+        cell.classList.remove("explosion-fade", "bomb-piece");
         if (value) {
           applyPieceTone(cell, value);
         } else {
@@ -1238,6 +1286,9 @@
           cell.style.width = `${size}px`;
           cell.style.height = `${size}px`;
           if (active.has(`${x},${y}`)) {
+            if (piece.type === "bomb" || piece.key === "bomb") {
+              cell.classList.add("bomb-piece");
+            }
             applyPieceTone(cell, piece.colorKey);
           }
           grid.appendChild(cell);
@@ -1291,32 +1342,45 @@
           return;
         }
         animatePlacement(placement, () => {
-          applyPlacement(placement);
-          state.turn += 1;
-          state.nextPiece = null;
-          state.busy = false;
-          if (state.mode === "versus" && state.score === 0) {
-            finishVersusGame("computer-won");
+          const finalizePlacement = () => {
+            applyPlacement(placement);
+            state.turn += 1;
+            state.nextPiece = null;
+            state.busy = false;
+            if (state.mode === "versus" && state.score === 0) {
+              finishVersusGame("computer-won");
+              return;
+            }
+            render();
+            if (freezeChoicesMs > 0) {
+              window.setTimeout(() => {
+                if (state.gameOver) {
+                  return;
+                }
+                refillOffers();
+                render();
+              }, freezeChoicesMs);
+              return;
+            }
+            refillOffers();
+            render();
+          };
+
+          if (placement.type === "bomb") {
+            animateBombExplosion(placement, finalizePlacement);
             return;
           }
-          render();
-          if (freezeChoicesMs > 0) {
-            window.setTimeout(() => {
-              if (state.gameOver) {
-                return;
-              }
-              refillOffers();
-              render();
-            }, freezeChoicesMs);
-            return;
-          }
-          refillOffers();
-          render();
+
+          finalizePlacement();
         });
       }, 320);
     }
 
     function findBestPlacement(board, piece, options = {}) {
+      if (piece.type === "bomb") {
+        return findBestBombPlacement(board, piece);
+      }
+
       const { skipLookahead = false } = options;
       const candidates = [];
       for (const rotation of piece.rotations) {
@@ -1326,7 +1390,7 @@
             continue;
           }
           const simulated = cloneBoard(board);
-          placeOnBoard(simulated, rotation.coords, x, y);
+          applyPieceEffect(simulated, piece, rotation, x, y);
           const cleared = clearLines(simulated);
           const metrics = evaluateBoard(simulated);
           const immediateScore = scoreBoard(metrics, cleared);
@@ -1335,6 +1399,7 @@
             x,
             y,
             rotation,
+            type: piece.type || "polyomino",
             pieceSize: piece.size,
             colorKey: piece.colorKey || null,
             linesCleared: cleared,
@@ -1349,6 +1414,78 @@
       });
 
       return candidates[0] || null;
+    }
+
+    function findBestBombPlacement(board, piece) {
+      const rotation = piece.rotations[0];
+      const candidates = [];
+
+      for (let x = 0; x <= WIDTH - rotation.width; x += 1) {
+        const y = findDropRow(board, rotation, x);
+        if (y === null) {
+          continue;
+        }
+
+        const affected = getBombBlastCells(board, x, y);
+        const impact = evaluateBombImpact(board, affected, x, y);
+        candidates.push({
+          x,
+          y,
+          rotation,
+          type: piece.type || "bomb",
+          pieceSize: piece.size,
+          colorKey: piece.colorKey || "bomb",
+          linesCleared: 0,
+          metrics: null,
+          score: impact.score,
+          impact,
+        });
+      }
+
+      candidates.sort((a, b) => b.score - a.score);
+      return candidates[0] || null;
+    }
+
+    function evaluateBombImpact(board, affected, centerX, centerY) {
+      if (affected.length === 0) {
+        return {
+          highestPriority: 0,
+          totalWeight: 0,
+          hitCount: 0,
+          score: localColumnThreat(board, centerX, centerY),
+        };
+      }
+
+      let highestPriority = 0;
+      let totalWeight = 0;
+
+      for (const { y } of affected) {
+        const heightPriority = HEIGHT - y;
+        highestPriority = Math.max(highestPriority, heightPriority);
+        totalWeight += heightPriority * heightPriority;
+      }
+
+      return {
+        highestPriority,
+        totalWeight,
+        hitCount: affected.length,
+        score: (highestPriority * 100000) + (totalWeight * 100) + affected.length,
+      };
+    }
+
+    function localColumnThreat(board, centerX, centerY) {
+      let score = 0;
+      for (let y = Math.max(0, centerY - 1); y <= Math.min(HEIGHT - 1, centerY + 1); y += 1) {
+        for (let x = Math.max(0, centerX - 1); x <= Math.min(WIDTH - 1, centerX + 1); x += 1) {
+          const heightPriority = HEIGHT - y;
+          if (board[y][x]) {
+            score += heightPriority * heightPriority;
+          } else {
+            score += heightPriority;
+          }
+        }
+      }
+      return score;
     }
 
     function estimateFuturePressure(board) {
@@ -1397,6 +1534,34 @@
       for (const [x, y] of coords) {
         board[y + offsetY][x + offsetX] = fillValue;
       }
+    }
+
+    function applyPieceEffect(board, piece, rotation, offsetX, offsetY, fillValue = 1) {
+      if (piece.type === "bomb") {
+        applyBombExplosion(board, offsetX, offsetY);
+        return;
+      }
+      placeOnBoard(board, rotation.coords, offsetX, offsetY, fillValue);
+    }
+
+    function applyBombExplosion(board, centerX, centerY) {
+      for (let y = Math.max(0, centerY - 1); y <= Math.min(HEIGHT - 1, centerY + 1); y += 1) {
+        for (let x = Math.max(0, centerX - 1); x <= Math.min(WIDTH - 1, centerX + 1); x += 1) {
+          board[y][x] = 0;
+        }
+      }
+    }
+
+    function getBombBlastCells(board, centerX, centerY) {
+      const affected = [];
+      for (let y = Math.max(0, centerY - 1); y <= Math.min(HEIGHT - 1, centerY + 1); y += 1) {
+        for (let x = Math.max(0, centerX - 1); x <= Math.min(WIDTH - 1, centerX + 1); x += 1) {
+          if (board[y][x]) {
+            affected.push({ x, y });
+          }
+        }
+      }
+      return affected;
     }
 
     function clearLines(board) {
@@ -1529,6 +1694,9 @@
       for (const [x, y] of placement.rotation.coords) {
         const cell = document.createElement("div");
         cell.className = "ghost-cell";
+        if (placement.type === "bomb") {
+          cell.classList.add("bomb-piece");
+        }
         applyPieceTone(cell, placement.colorKey);
         cell.style.width = `${cellWidth}px`;
         cell.style.height = `${cellHeight}px`;
@@ -1558,6 +1726,24 @@
       }, duration + 40);
     }
 
+    function animateBombExplosion(placement, onDone) {
+      playBombExplosionSound();
+      const affected = getBombBlastCells(state.board, placement.x, placement.y);
+      if (affected.length === 0) {
+        window.setTimeout(onDone, 300);
+        return;
+      }
+
+      affected.forEach(({ x, y }) => {
+        const cell = cells[(y * WIDTH) + x];
+        if (cell) {
+          cell.classList.add("explosion-fade");
+        }
+      });
+
+      window.setTimeout(onDone, 300);
+    }
+
     function getFieldMetrics() {
       const cellWidth = (fieldEl.clientWidth - (WIDTH - 1)) / WIDTH;
       const cellHeight = (fieldEl.clientHeight - (HEIGHT - 1)) / HEIGHT;
@@ -1570,7 +1756,14 @@
     }
 
     function applyPlacement(placement) {
-      placeOnBoard(state.board, placement.rotation.coords, placement.x, placement.y, placement.colorKey || 1);
+      applyPieceEffect(
+        state.board,
+        { type: placement.type, colorKey: placement.colorKey, size: placement.pieceSize },
+        placement.rotation,
+        placement.x,
+        placement.y,
+        placement.colorKey || 1,
+      );
       const cleared = clearLines(state.board);
       if (state.mode === "coop") {
         state.score += placement.pieceSize + (cleared * 15);
@@ -1584,15 +1777,17 @@
         playClearLineSound(cleared);
         setStatus(
           state.mode === "coop"
-            ? `Отлично: компьютер закрыл ${cleared} ${pluralizeLines(cleared)} и принес команде еще очки.`
-            : `Компьютер закрыл ${cleared} ${pluralizeLines(cleared)}. Минус ${cleared * VERSUS_LINE_PENALTY} очков.`,
+            ? `${placement.type === "bomb" ? "Бомба сработала, " : "Отлично: компьютер "}закрыл ${cleared} ${pluralizeLines(cleared)} и принес команде еще очки.`
+            : `${placement.type === "bomb" ? "Бомба сработала: " : "Компьютер закрыл "}${cleared} ${pluralizeLines(cleared)}. Минус ${cleared * VERSUS_LINE_PENALTY} очков.`,
           false,
         );
       } else {
         setStatus(
-          state.mode === "coop"
-            ? "Компьютер поставил фигуру без закрытия рядов. Ищи еще более удобные варианты."
-            : "Компьютер поставил фигуру, но рядов не закрыл. Давление на стакан растет.",
+          placement.type === "bomb"
+            ? "Бомба взорвалась и очистила клетки вокруг точки падения."
+            : state.mode === "coop"
+              ? "Компьютер поставил фигуру без закрытия рядов. Ищи еще более удобные варианты."
+              : "Компьютер поставил фигуру, но рядов не закрыл. Давление на стакан растет.",
           false,
         );
       }
@@ -1638,6 +1833,9 @@
     }
 
     function shapeName(piece) {
+      if (piece.type === "bomb" || piece.key === "bomb") {
+        return "Бомба";
+      }
       const adjectives = {
         4: "Короткая",
         5: "Средняя",
