@@ -673,11 +673,14 @@
       <div class="modal-actions">
         <button class="mode-btn" id="mode-coop-btn" type="button">
           <strong>Кремниевый терпила — твой бро</strong>
-          <span>В режиме совместной деградации вам придётся сплотить свои скромные интеллектуальные усилия ради выживания. Нежно скармливай этой консервной банке самые простые палочки и квадраты и вместе набирайте очки, пока у тебя не закончатся силы жалеть бесполезное железо.</span>
+          <span>Игра на выживание в одной команде с компьютером. В режиме совместной деградации вам придётся сплотить свои скромные интеллектуальные 
+            усилия ради выживания. Выбирай самые простые и удобные фигуры ведь твоя цель — помочь ему продержаться как можно дольше и вместе набрать много очков.</span>
         </button>
         <button class="mode-btn" id="mode-versus-btn" type="button">
-          <strong>Кожаный мешок против тостера</strong>
-          <span>Врубай режим тотальной войны и докажи этому самодовольному кибер-сверхразуму, кто тут босс. Твоя задача — подсовывать компьютеру самые уродливые, изломанные и неудобные фигуры, чтобы он гарантированно не смог их никуда пристроить. Ломай ему логику, забивай его стакан хламом до самого верха и сделай так, чтобы этот кусок железа опозорился и проиграл как можно быстрее.</span>
+          <strong>Кожаный против тостера</strong>
+          <span> 
+            Твоя задача — подсовывать компьютеру самые уродливые, изломанные и неудобные фигуры, чтобы он гарантированно не смог их никуда пристроить. 
+            Ломай ему логику, забивай его стакан хламом до самого верха и сделай так, чтобы этот кусок железа опозорился и проиграл как можно быстрее.</span>
         </button>
       </div>
     </div>
@@ -733,6 +736,7 @@
     let offerTimeoutId = null;
     let offerProgressFrameId = null;
     let offerTimerStartedAt = 0;
+    let offerTimerDurationMs = OFFER_TIMEOUT_MS;
 
     const cells = [];
     const polyominoPools = new Map();
@@ -982,10 +986,26 @@
     }
 
     function uniqueOfferPieces(count) {
-      const pool = getCurrentOfferPool();
-      return shuffle(pool)
-        .slice(0, Math.min(count, pool.length))
-        .map(pieceFromTemplate);
+      const pool = shuffle(getCurrentOfferPool());
+      const limit = Math.min(count, pool.length);
+      const maxSizeSixPieces = getCurrentMaxSizeSixPiecesPerOffer();
+      const picked = [];
+      let sizeSixCount = 0;
+
+      for (const template of pool) {
+        if (picked.length >= limit) {
+          break;
+        }
+        if (template.size === 6 && sizeSixCount >= maxSizeSixPieces) {
+          continue;
+        }
+        picked.push(template);
+        if (template.size === 6) {
+          sizeSixCount += 1;
+        }
+      }
+
+      return picked.map(pieceFromTemplate);
     }
 
     function getCurrentOfferPool() {
@@ -1022,10 +1042,24 @@
         return { ...BASE_SIZE_RANGE };
       }
       return {
-        //min: BASE_SIZE_RANGE.min + state.unlockedSizeLevel,
         min: BASE_SIZE_RANGE.min,
-        max: BASE_SIZE_RANGE.max + state.unlockedSizeLevel,
+        max: state.score >= SIZE_SCORE_STEP ? 6 : BASE_SIZE_RANGE.max,
       };
+    }
+
+    function getCurrentMaxSizeSixPiecesPerOffer() {
+      if (state.mode !== "coop" || state.score < SIZE_SCORE_STEP) {
+        return 0;
+      }
+      return state.score >= SIZE_SCORE_STEP * 3 ? 3 : 2;
+    }
+
+    function getCurrentOfferTimeoutMs() {
+      if (state.mode !== "coop") {
+        return OFFER_TIMEOUT_MS;
+      }
+      const difficultyLevel = Math.floor(state.score / SIZE_SCORE_STEP);
+      return Math.max(300, OFFER_TIMEOUT_MS - (difficultyLevel * 300));
     }
 
     function getPolyominoPool(size) {
@@ -1204,6 +1238,7 @@
         offerProgressFrameId = null;
       }
       offerTimerStartedAt = 0;
+      offerTimerDurationMs = OFFER_TIMEOUT_MS;
       setOfferTimerProgress(0);
     }
 
@@ -1212,8 +1247,8 @@
         return;
       }
       const elapsed = performance.now() - offerTimerStartedAt;
-      setOfferTimerProgress(elapsed / OFFER_TIMEOUT_MS);
-      if (elapsed < OFFER_TIMEOUT_MS && !state.busy && !state.gameOver) {
+      setOfferTimerProgress((elapsed / offerTimerDurationMs));
+      if (elapsed < offerTimerDurationMs && !state.busy && !state.gameOver) {
         offerProgressFrameId = window.requestAnimationFrame(tickOfferTimer);
       } else {
         offerProgressFrameId = null;
@@ -1225,8 +1260,9 @@
       if (state.busy || state.choicesFrozen || state.gameOver || state.offered.length === 0) {
         return;
       }
+      offerTimerDurationMs = getCurrentOfferTimeoutMs();
       offerTimerStartedAt = performance.now();
-      setOfferTimerProgress(0);
+      setOfferTimerProgress(1);
       offerProgressFrameId = window.requestAnimationFrame(tickOfferTimer);
       offerTimeoutId = window.setTimeout(() => {
         offerTimeoutId = null;
@@ -1256,7 +1292,7 @@
         renderChoices();
         setStatus(GAME_MODES[state.mode].timerMessage, false);
         startOfferTimer();
-      }, OFFER_TIMEOUT_MS);
+      }, offerTimerDurationMs);
     }
 
     function renderQueue() {
@@ -1868,8 +1904,19 @@
       const nextLevel = Math.floor(state.score / SIZE_SCORE_STEP);
       if (nextLevel > state.unlockedSizeLevel) {
         state.unlockedSizeLevel = nextLevel;
-        const range = getCurrentSizeRange();
-        setStatus(`Новый уровень фигур: теперь в наборе размеры от ${range.min} до ${range.max} клеток.`, false);
+        const sizeSixLimit = getCurrentMaxSizeSixPiecesPerOffer();
+        const timeoutMs = getCurrentOfferTimeoutMs();
+        const additions = [];
+
+        if (state.score >= SIZE_SCORE_STEP) {
+          additions.push(`в наборе могут появляться 6-клеточные фигуры`);
+          additions.push(`на выбор теперь ${timeoutMs} мс`);
+          additions.push(`6-клеточных фигур в одном наборе может быть не больше ${sizeSixLimit}`);
+        } else {
+          additions.push(`на выбор теперь ${timeoutMs} мс`);
+        }
+
+        setStatus(`Сложность выросла: ${additions.join(", ")}.`, false);
       }
     }
 
